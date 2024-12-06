@@ -21,10 +21,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         fetchPostData()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        fetchPostData()
-    }
-    
     private func setupTableView()
     {
         tableView.delegate = self
@@ -71,11 +67,12 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                let id = data["id"] as? String,
                let timestamp = data["creationDate"] as? Timestamp {
                 
+                let creationDate = timestamp.dateValue()
                 let post = PostData(
                     imageUrl: imageUrl,
                     postedBy: postedBy,
                     postDescription: postDescription,
-                    creationDate: timestamp.dateValue(),
+                    creationDate: creationDate,
                     likeCount: likeCount,
                     id: id
                 )

@@ -99,7 +99,8 @@ class CreatePostViewController: UIViewController, UIImagePickerControllerDelegat
                         "postedBy": Auth.auth().currentUser?.email ?? "Unknown User",
                         "postDescription": self.descriptionTextField.text ?? "",
                         "creationDate": FieldValue.serverTimestamp(),
-                        "likeCount": 0
+                        "likeCount": 0,
+                        "id" : uuid
                     ]
                     
                     let firestoreDatabase = Firestore.firestore()

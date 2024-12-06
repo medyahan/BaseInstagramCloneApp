@@ -31,20 +31,50 @@ class LoginSignUpViewController: UIViewController {
             return
         }
         
-        createUser()
+        registerUser()
     }
     
-    private func createUser() {
-        Auth.auth().createUser(withEmail: usernameOrEmailTextField.text!, password: passwordTextField.text!) { (authData, error) in
-            
+    private func registerUser() {
+        guard let email = usernameOrEmailTextField.text,
+              let password = passwordTextField.text else { return }
+        
+        Auth.auth().createUser(withEmail: email, password: password) { authData, error in
             if let error = error {
                 self.showAlert(title: "Error", message: error.localizedDescription)
                 return
             }
             
-            self.performSegue(withIdentifier: "toHomeVC", sender: nil)
-            self.showAlert(title: "Success", message: "Account created successfully!")
+            // Kullanıcıyı Firestore'a kaydet
+            self.saveUserToFirestore(email: email)
         }
+    }
+    
+    private func saveUserToFirestore(email: String) {
+        let firestoreDatabase = Firestore.firestore()
+        
+        let username = extractUsername(from: email)
+        let userData: [String: Any] = [
+            "email": email,
+            "username": username,
+            "profileImageUrl": "",
+            "biography": ""
+        ]
+        
+        firestoreDatabase.collection("Users").document(email).setData(userData) { error in
+            if let error = error {
+                self.showAlert(title: "Error", message: "User created, but additional info couldn't be saved: \(error.localizedDescription)")
+                return
+            }
+            
+            self.performSegue(withIdentifier: "toHomeVC", sender: nil)
+        }
+    }
+    
+    private func extractUsername(from email: String) -> String {
+        if let username = email.split(separator: "@").first {
+            return String(username)
+        }
+        return "User"
     }
     
     private func checkUser(){
