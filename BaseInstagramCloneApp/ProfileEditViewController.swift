@@ -16,10 +16,13 @@ class ProfileEditViewController: UIViewController {
     @IBOutlet weak var imageView: UIImageView!
     @IBOutlet weak var usernameTextField: UITextField!
     @IBOutlet weak var biographyTextField: UITextField!
+    @IBOutlet weak var emailLabel: UILabel!
     @IBOutlet weak var loadingSpinner: UIActivityIndicatorView!
     @IBOutlet weak var saveButton: UIButton!
     
     let defaultImage = UIImage(systemName: "person.circle.fill")
+    
+    let firestore = Firestore.firestore()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -30,9 +33,11 @@ class ProfileEditViewController: UIViewController {
     private func setupUI() {
         loadingSpinner.isHidden = true
         setupImageView()
-        saveButton.layer.cornerRadius = 8
-        imageView.layer.cornerRadius = imageView.frame.height / 2
+        
+        imageView.layer.cornerRadius = imageView.frame.size.width / 2
         imageView.clipsToBounds = true
+        imageView.layer.borderWidth = 1
+        imageView.layer.borderColor = UIColor.systemGray6.cgColor
     }
     
     private func setupImageView() {
@@ -50,11 +55,13 @@ class ProfileEditViewController: UIViewController {
     }
     
     private func loadUserProfile() {
-        guard let userEmail = Auth.auth().currentUser?.email else { return }
+        guard let user = Auth.auth().currentUser else { return }
         
-        Firestore.firestore()
+        emailLabel.text = user.email
+        
+        firestore
             .collection("Users")
-            .whereField("email", isEqualTo: userEmail)
+            .whereField("id", isEqualTo: user.uid)
             .getDocuments { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
@@ -98,7 +105,7 @@ class ProfileEditViewController: UIViewController {
     
     private func saveUserProfile(username: String, biography: String) {
         
-        guard let userEmail = Auth.auth().currentUser?.email else {
+        guard (Auth.auth().currentUser?.email) != nil else {
             print("Error: User email not found.")
             return
         }
@@ -148,7 +155,7 @@ class ProfileEditViewController: UIViewController {
     }
     
     private func updateUserProfile(username: String, biography: String, profileImageUrl: String?) {
-        guard let userEmail = Auth.auth().currentUser?.email else {
+        guard let user = Auth.auth().currentUser else {
             print("Error: User email not found.")
             return
         }
@@ -162,9 +169,9 @@ class ProfileEditViewController: UIViewController {
             userData["profileImageUrl"] = profileImageUrl
         }
         
-        Firestore.firestore()
+        firestore
             .collection("Users")
-            .document(userEmail)
+            .document(user.uid)
             .setData(userData, merge: true) { [weak self] error in
                 guard let self = self else { return }
                 
@@ -176,8 +183,10 @@ class ProfileEditViewController: UIViewController {
                     return
                 }
                 
-                print("Profile updated successfully.")
-                self.showAlert(title: "Success", message: "Profile updated successfully!")
+                dismiss(animated: true) {
+                    self.showAlert(title: "Success", message: "Profile updated successfully!")
+                }
+                
             }
     }
     

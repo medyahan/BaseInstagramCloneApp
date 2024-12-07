@@ -14,11 +14,17 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     
     private var posts: [PostData] = []
     
+    private var feedListener : ListenerRegistration?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         setupTableView()
         fetchPostData()
+    }
+    
+    deinit {
+        feedListener?.remove()
     }
     
     private func setupTableView()
@@ -30,7 +36,6 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     private func fetchPostData() {
         let firestoreDatabase = Firestore.firestore()
         
-        // İlk veriyi bir kez çek
         firestoreDatabase.collection("Posts").order(by: "creationDate", descending: true).getDocuments { snapshot, error in
             if let error = error {
                 print("Error fetching initial data: \(error.localizedDescription)")
@@ -41,8 +46,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             self.updatePosts(from: snapshot)
         }
         
-        // Dinleyiciyi ekle
-        firestoreDatabase.collection("Posts").order(by: "creationDate", descending: true).addSnapshotListener { snapshot, error in
+        feedListener = firestoreDatabase.collection("Posts").order(by: "creationDate", descending: true).addSnapshotListener { snapshot, error in
             if let error = error {
                 print("Error with snapshot listener: \(error.localizedDescription)")
                 return
@@ -65,7 +69,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                let postDescription = data["postDescription"] as? String,
                let likeCount = data["likeCount"] as? Int,
                let id = data["id"] as? String,
-               let timestamp = data["creationDate"] as? Timestamp {
+               let timestamp = data["creationDate"] as? Timestamp,
+               let likedBy = data["likedBy"] as? [String]{
                 
                 let creationDate = timestamp.dateValue()
                 let post = PostData(
@@ -74,7 +79,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                     postDescription: postDescription,
                     creationDate: creationDate,
                     likeCount: likeCount,
-                    id: id
+                    id: id,
+                    likedBy: likedBy
                 )
                 
                 self.posts.append(post)

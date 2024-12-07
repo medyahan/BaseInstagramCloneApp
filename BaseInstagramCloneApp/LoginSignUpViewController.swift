@@ -43,26 +43,27 @@ class LoginSignUpViewController: UIViewController {
                 self.showAlert(title: "Error", message: error.localizedDescription)
                 return
             }
-            
+            let userID = authData?.user.uid
             // Kullanıcıyı Firestore'a kaydet
-            self.saveUserToFirestore(email: email)
+            self.saveUserToFirestore(email: email, id: userID!)
         }
     }
     
-    private func saveUserToFirestore(email: String) {
+    private func saveUserToFirestore(email: String, id: String) {
         let firestoreDatabase = Firestore.firestore()
         
         let username = extractUsername(from: email)
         let userData: [String: Any] = [
+            "id": id,
             "email": email,
             "username": username,
             "profileImageUrl": "",
             "biography": ""
         ]
         
-        firestoreDatabase.collection("Users").document(email).setData(userData) { error in
+        firestoreDatabase.collection("Users").document(id).setData(userData) { error in
             if let error = error {
-                self.showAlert(title: "Error", message: "User created, but additional info couldn't be saved: \(error.localizedDescription)")
+                self.showAlert(title: "Error", message: error.localizedDescription)
                 return
             }
             
@@ -105,7 +106,5 @@ class LoginSignUpViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         present(alert, animated: true)
     }
-    
-    
 }
 

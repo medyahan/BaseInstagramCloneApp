@@ -16,7 +16,11 @@ class ProfileViewController: UIViewController, UICollectionViewDelegate, UIColle
     @IBOutlet weak var usernameLabel: UILabel!
     @IBOutlet weak var biographyLabel: UILabel!
     
+    private let firestoreDatabase = Firestore.firestore()
     private var posts: [PostData] = []
+    
+    private var profileListener: ListenerRegistration?
+    private var postsListener: ListenerRegistration?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,61 +31,73 @@ class ProfileViewController: UIViewController, UICollectionViewDelegate, UIColle
         fetchUserPosts()
     }
     
+    deinit {
+        profileListener?.remove()
+        postsListener?.remove()
+    }
+    
     private func setupProfileImageView() {
         profileImageView.layer.cornerRadius = profileImageView.frame.size.width / 2
         profileImageView.clipsToBounds = true
-        profileImageView.layer.borderWidth = 2
-        profileImageView.layer.borderColor = UIColor.lightGray.cgColor
+        profileImageView.layer.borderWidth = 1
+        profileImageView.layer.borderColor = UIColor.systemGray6.cgColor
     }
     
     private func setupCollectionView() {
+        
         postCollectionView.delegate = self
         postCollectionView.dataSource = self
         
-        let spacing = 1
-        let columnCount = 3
-        let size = Int(postCollectionView.frame.width) / columnCount - spacing
         let layout = UICollectionViewFlowLayout()
-        layout.itemSize = CGSize(width: size, height: size)
-        layout.minimumLineSpacing = CGFloat(7)
-        layout.minimumInteritemSpacing = CGFloat(spacing)
+        
+        let screenWidth = UIScreen.main.bounds.width
+        let columnCount: CGFloat = screenWidth > 375 ? 3 : 3
+        let spacing: CGFloat = 1
+        let totalSpacing = (columnCount - 1) * spacing
+        let itemWidth = (postCollectionView.frame.width - totalSpacing) / columnCount
+        
+        layout.itemSize = CGSize(width: itemWidth, height: itemWidth)
+        layout.minimumLineSpacing = 5
+        layout.minimumInteritemSpacing = spacing
         postCollectionView.collectionViewLayout = layout
     }
     
     private func loadUserProfile() {
-        guard let userEmail = Auth.auth().currentUser?.email else { return }
+        guard let userID = Auth.auth().currentUser?.uid else { return }
         let firestoreDatabase = Firestore.firestore()
         
-        firestoreDatabase.collection("Users").whereField("email", isEqualTo: userEmail).getDocuments { snapshot, error in
-            if let error = error {
-                print("Error fetching user profile: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let document = snapshot?.documents.first else {
-                print("User profile not found. Using system profile image.")
-                self.setDefaultProfile()
-                return
-            }
-            
-            let data = document.data()
-            let username = data["username"] as? String ?? "No Username"
-            let biography = data["biography"] as? String ?? ""
-            let profileImageUrl = data["profileImageUrl"] as? String
-            
-            DispatchQueue.main.async {
-                self.usernameLabel.text = username
-                self.biographyLabel.text = biography
+        profileListener = firestoreDatabase.collection("Users").whereField("id", isEqualTo: userID)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("Error fetching user profile: \(error.localizedDescription)")
+                    return
+                }
                 
-                if let profileImageUrl = profileImageUrl, let url = URL(string: profileImageUrl) {
-                    self.profileImageView.sd_setImage(with: url, placeholderImage: UIImage(systemName: "person.circle.fill"))
-                } else {
-                    print("No profile image URL found. Using system profile image.")
+                guard let document = snapshot?.documents.first else {
+                    print("User profile not found. Using system profile image.")
                     self.setDefaultProfile()
+                    return
+                }
+                
+                let data = document.data()
+                let username = data["username"] as? String ?? "No Username"
+                let biography = data["biography"] as? String ?? ""
+                let profileImageUrl = data["profileImageUrl"] as? String
+                
+                DispatchQueue.main.async {
+                    self.usernameLabel.text = username
+                    self.biographyLabel.text = biography
+                    
+                    if let profileImageUrl = profileImageUrl, let url = URL(string: profileImageUrl) {
+                        self.profileImageView.sd_setImage(with: url, placeholderImage: UIImage(systemName: "person.circle.fill"))
+                    } else {
+                        print("No profile image URL found. Using system profile image.")
+                        self.setDefaultProfile()
+                    }
                 }
             }
-        }
     }
+    
     
     private func setDefaultProfile() {
         DispatchQueue.main.async {
@@ -89,55 +105,61 @@ class ProfileViewController: UIViewController, UICollectionViewDelegate, UIColle
         }
     }
     
-    
     private func fetchUserPosts() {
-        let firestoreDatabase = Firestore.firestore()
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("User not logged in")
+            return
+        }
         
-        if let userEmail = Auth.auth().currentUser?.email {
-            firestoreDatabase.collection("Posts").whereField("postedBy", isEqualTo: userEmail).order(by: "creationDate", descending: true)
-                .addSnapshotListener { snapshot, error in
-                    if let error = error {
-                        print("Error fetching user posts: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    self.posts.removeAll()
-                    
-                    guard let documents = snapshot?.documents else {
-                        print("No documents found")
-                        return
-                    }
-                    
-                    for document in documents {
-                        let data = document.data()
-                        if let imageUrl = data["imageUrl"] as? String,
-                           let postedBy = data["postedBy"] as? String,
-                           let postDescription = data["postDescription"] as? String,
-                           let likeCount = data["likeCount"] as? Int,
-                           let id = data["id"] as? String,
-                           let timestamp = data["creationDate"] as? Timestamp {
-                            
-                            let creationDate = timestamp.dateValue()
-                            let post = PostData(
-                                imageUrl: imageUrl,
-                                postedBy: postedBy,
-                                postDescription: postDescription,
-                                creationDate: creationDate,
-                                likeCount: likeCount,
-                                id: id
-                            )
-                            
-                            self.posts.append(post)
-                        }
-                    }
-                    
+        postsListener = firestoreDatabase.collection("Posts")
+            .whereField("postedBy", isEqualTo: userID)
+            .order(by: "creationDate", descending: true)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("Error fetching user posts: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let snapshot = snapshot, !snapshot.isEmpty else {
+                    print("No posts found")
+                    self.posts = []
                     DispatchQueue.main.async {
                         self.postCollectionView.reloadData()
                     }
+                    return
                 }
-        }
+                
+                self.posts.removeAll()
+                
+                for document in snapshot.documents {
+                    let data = document.data()
+                    if let imageUrl = data["imageUrl"] as? String,
+                       let postedBy = data["postedBy"] as? String,
+                       let postDescription = data["postDescription"] as? String,
+                       let likeCount = data["likeCount"] as? Int,
+                       let id = data["id"] as? String,
+                       let timestamp = data["creationDate"] as? Timestamp,
+                       let likedBy = data["likedBy"] as? [String] {
+                        
+                        let creationDate = timestamp.dateValue()
+                        let post = PostData(
+                            imageUrl: imageUrl,
+                            postedBy: postedBy,
+                            postDescription: postDescription,
+                            creationDate: creationDate,
+                            likeCount: likeCount,
+                            id: id,
+                            likedBy: likedBy
+                        )
+                        self.posts.append(post)
+                    }
+                }
+                
+                DispatchQueue.main.async {
+                    self.postCollectionView.reloadData()
+                }
+            }
     }
-    
     
     @IBAction func logOutButtonClicked(_ sender: Any) {
         logOut()

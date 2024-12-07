@@ -20,6 +20,8 @@ class CreatePostViewController: UIViewController, UIImagePickerControllerDelegat
     
     let defaultImage = UIImage(systemName: "photo.badge.plus")
     
+    let firestore = Firestore.firestore()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupRecognizer()
@@ -52,7 +54,6 @@ class CreatePostViewController: UIViewController, UIImagePickerControllerDelegat
     
     @IBAction func shareButton(_ sender: Any) {
         
-        // Spinner'ı başlat ve butonu devre dışı bırak
         loadingSpinner.startAnimating()
         (sender as? UIButton)?.isEnabled = false
         
@@ -62,15 +63,12 @@ class CreatePostViewController: UIViewController, UIImagePickerControllerDelegat
             (sender as? UIButton)?.isEnabled = true
             return
         }
-        print("Image is valid")
         
         let storage = Storage.storage()
         let storageReference = storage.reference()
         let mediaFolder = storageReference.child("media")
         
         if let data = imageView.image?.jpegData(compressionQuality: 0.1) {
-            print("Image data prepared")
-            
             let uuid = UUID().uuidString
             let imageReference = mediaFolder.child("\(uuid).jpeg")
             
@@ -96,16 +94,15 @@ class CreatePostViewController: UIViewController, UIImagePickerControllerDelegat
                     let imageUrl = url?.absoluteString
                     let post: [String: Any] = [
                         "imageUrl": imageUrl ?? "",
-                        "postedBy": Auth.auth().currentUser?.email ?? "Unknown User",
+                        "postedBy": Auth.auth().currentUser?.uid ?? "UnknownUser",
                         "postDescription": self.descriptionTextField.text ?? "",
                         "creationDate": FieldValue.serverTimestamp(),
                         "likeCount": 0,
-                        "id" : uuid
+                        "id" : uuid,
+                        "likedBy": []
                     ]
                     
-                    let firestoreDatabase = Firestore.firestore()
-                    
-                    firestoreDatabase.collection("Posts").addDocument(data: post, completion: { error in
+                    self.firestore.collection("Posts").document(uuid).setData(post) { error in
                         if let error = error {
                             print("Error saving post to Firestore: \(error.localizedDescription)")
                             self.showAlert(title: "Error", message: error.localizedDescription)
@@ -116,10 +113,9 @@ class CreatePostViewController: UIViewController, UIImagePickerControllerDelegat
                         print("Post saved to Firestore")
                         self.handleSharingSuccess()
                         
-                        // Spinner'ı durdur ve butonu aktif hale getir
                         self.loadingSpinner.stopAnimating()
                         (sender as? UIButton)?.isEnabled = true
-                    })
+                    }
                 }
             }
         } else {

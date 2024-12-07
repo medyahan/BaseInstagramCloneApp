@@ -9,6 +9,7 @@ import UIKit
 import SDWebImage
 import Firebase
 import FirebaseFirestore
+import FirebaseAuth
 
 class PostCell: UITableViewCell {
     @IBOutlet var postImageView: UIImageView!
@@ -17,9 +18,14 @@ class PostCell: UITableViewCell {
     @IBOutlet weak var creationDateLabel: UILabel!
     @IBOutlet var descriptionLabel: UILabel!
     @IBOutlet weak var profileImageView: UIImageView!
+    @IBOutlet weak var likeButton: UIButton!
+    
+    let firestoreDatabase = Firestore.firestore()
     
     var postId : String? = ""
     var likeCount : Int? = 0
+    
+    var isLikedByCurrentUser : Bool? = false
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -40,7 +46,7 @@ class PostCell: UITableViewCell {
     }
     
     @objc private func handleDoubleTap() {
-        likePost()
+        likePost(withDoubleTap: true)
         showHeartAnimation()
     }
     
@@ -54,7 +60,7 @@ class PostCell: UITableViewCell {
         
         addSubview(heartImageView)
         
-        UIView.animateKeyframes(withDuration: 0.6, delay: 0, options: [], animations: {
+        UIView.animateKeyframes(withDuration: 0.8, delay: 0, options: [], animations: {
             UIView.addKeyframe(withRelativeStartTime: 0.0, relativeDuration: 0.4) {
                 heartImageView.alpha = 1
                 heartImageView.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
@@ -72,7 +78,6 @@ class PostCell: UITableViewCell {
         postId = postData.id
         likeCount = postData.likeCount
         
-        postedByLabel.text = postData.postedBy
         descriptionLabel.text = postData.postDescription
         likeCountLabel.text = "\(likeCount ?? 0)"
         
@@ -88,14 +93,14 @@ class PostCell: UITableViewCell {
             postImageView.sd_setImage(with: url, placeholderImage: UIImage(named: "placeholder"))
         }
         
-        loadProfileImage(email: postData.postedBy)
+        loadProfile(userId: postData.postedBy)
         observeLikeCount()
+        checkLikeButton()
     }
     
     private func observeLikeCount() {
         guard let postId = postId else { return }
         
-        let firestoreDatabase = Firestore.firestore()
         firestoreDatabase.collection("Posts").document(postId).addSnapshotListener { [weak self] snapshot, error in
             guard let self = self else { return }
             
@@ -112,10 +117,8 @@ class PostCell: UITableViewCell {
         }
     }
     
-    private func loadProfileImage(email: String) {
-        let firestoreDatabase = Firestore.firestore()
-        
-        firestoreDatabase.collection("Users").whereField("email", isEqualTo: email).getDocuments { [weak self] snapshot, error in
+    private func loadProfile(userId: String) {
+        firestoreDatabase.collection("Users").whereField("id", isEqualTo: userId).getDocuments { [weak self] snapshot, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -125,7 +128,7 @@ class PostCell: UITableViewCell {
             }
             
             guard let document = snapshot?.documents.first else {
-                print("No user profile found for email: \(email)")
+                print("No user profile found for email: \(userId)")
                 self.profileImageView.image = UIImage(systemName: "person.circle.fill") // Varsayılan görsel
                 return
             }
@@ -137,32 +140,95 @@ class PostCell: UITableViewCell {
             } else {
                 self.profileImageView.image = UIImage(systemName: "person.circle.fill") // Varsayılan görsel
             }
-        }
-    }
-    
-    
-    
-    @IBAction func likeButtonClicked(_ sender: Any) {
-        
-        likePost()
-    }
-    
-    private func likePost() {
-        guard let postId = postId else { return }
-        
-        let firestoreDatabase = Firestore.firestore()
-        likeCount = (likeCount ?? 0) + 1
-        
-        let likeStore = ["likeCount": likeCount ?? 0]
-        firestoreDatabase.collection("Posts").document(postId).setData(likeStore, merge: true) { error in
-            if let error = error {
-                print("Error liking post: \(error.localizedDescription)")
-            } else {
-                print("Post liked successfully!")
-                DispatchQueue.main.async {
-                    self.likeCountLabel.text = "\(self.likeCount ?? 0)"
-                }
+            
+            if let username = data["username"] as? String{
+                postedByLabel.text = username
             }
         }
     }
+    
+    private func checkLikeButton()
+    {
+        guard let postId = postId, let currentUserId = Auth.auth().currentUser?.uid else { return }
+        
+        let postRef = firestoreDatabase.collection("Posts").document(postId)
+        
+        postRef.getDocument { document, error in
+            if let error = error {
+                print("Error fetching post: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let document = document, document.exists else {
+                print("Post does not exist.")
+                return
+            }
+            
+            let data = document.data() ?? [:]
+            let likedBy = data["likedBy"] as? [String] ?? []
+            
+            if likedBy.contains(currentUserId) {
+                self.isLikedByCurrentUser = true
+                self.likeButton.setTitle("Unlike", for: .normal)
+                return
+            }
+            self.isLikedByCurrentUser = false
+            self.likeButton.setTitle("Like", for: .normal)
+        }
+    }
+    
+    @IBAction func likeButtonClicked(_ sender: Any) {
+        likePost(withDoubleTap: false)
+    }
+    
+    private func likePost(withDoubleTap: Bool) {
+        guard let postId = postId, let currentUserId = Auth.auth().currentUser?.uid else { return }
+        if isLikedByCurrentUser == true && withDoubleTap == true { return }
+        
+        let postRef = firestoreDatabase.collection("Posts").document(postId)
+        
+        postRef.getDocument { document, error in
+            if let error = error {
+                print("Error fetching post: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let document = document, document.exists else {
+                print("Post does not exist.")
+                return
+            }
+            
+            let data = document.data() ?? [:]
+            var likedBy = data["likedBy"] as? [String] ?? []
+            var newLikeCount : Int
+            
+            if likedBy.contains(currentUserId) {
+                
+                if let index = likedBy.firstIndex(of: currentUserId) {
+                    likedBy.remove(at: index)
+                }
+                newLikeCount = (data["likeCount"] as? Int ?? 0) - 1
+            }
+            else {
+                likedBy.append(currentUserId)
+                newLikeCount = (data["likeCount"] as? Int ?? 0) + 1
+            }
+            
+            let postData: [String: Any] = [
+                "likeCount": newLikeCount,
+                "likedBy": likedBy
+            ]
+            
+            postRef.updateData(postData) { error in
+                if let error = error {
+                    print("Error updating likes: \(error.localizedDescription)")
+                    return
+                }
+                
+                print("Post likes updated successfully!")
+                self.checkLikeButton()
+            }
+        }
+    }
+
 }

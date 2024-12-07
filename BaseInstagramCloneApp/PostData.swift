@@ -14,4 +14,5 @@ struct PostData {
     let creationDate: Date
     let likeCount: Int
     let id: String
+    let likedBy : [String]
 }
