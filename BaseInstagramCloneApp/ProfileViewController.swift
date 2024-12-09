@@ -24,9 +24,6 @@ class ProfileViewController: UIViewController, UICollectionViewDelegate, UIColle
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        setupProfileImageView()
-        setupCollectionView()
         loadUserProfile()
         fetchUserPosts()
     }
@@ -36,29 +33,34 @@ class ProfileViewController: UIViewController, UICollectionViewDelegate, UIColle
         postsListener?.remove()
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        setupCollectionView()
+        setupProfileImageView()
+    }
+    
     private func setupProfileImageView() {
         profileImageView.layer.cornerRadius = profileImageView.frame.size.width / 2
         profileImageView.clipsToBounds = true
         profileImageView.layer.borderWidth = 1
         profileImageView.layer.borderColor = UIColor.systemGray6.cgColor
     }
-    
+
     private func setupCollectionView() {
-        
         postCollectionView.delegate = self
         postCollectionView.dataSource = self
         
         let layout = UICollectionViewFlowLayout()
         
-        let screenWidth = UIScreen.main.bounds.width
-        let columnCount: CGFloat = screenWidth > 375 ? 3 : 3
-        let spacing: CGFloat = 1
-        let totalSpacing = (columnCount - 1) * spacing
-        let itemWidth = (postCollectionView.frame.width - totalSpacing) / columnCount
+        let columnCount: CGFloat = 3
+        let padding: CGFloat = 1
+        let totalSpacing = (columnCount - 1) * padding
+        let itemSize = (postCollectionView.bounds.width - totalSpacing) / columnCount
         
-        layout.itemSize = CGSize(width: itemWidth, height: itemWidth)
-        layout.minimumLineSpacing = 5
-        layout.minimumInteritemSpacing = spacing
+        layout.itemSize = CGSize(width: itemSize, height: itemSize)
+        layout.minimumLineSpacing = padding
+        layout.minimumInteritemSpacing = padding
+        
         postCollectionView.collectionViewLayout = layout
     }
     
