@@ -74,9 +74,10 @@
     <img src="screenshots/login-sign-up-screen.png" alt="Home Screen 1" width="200"/>
 </p>
 
-### Home Screen
+### Home Screens
 <p align="center">
-    <img src="screenshots/home-screen.png" alt="Home Screen" width="200"/>
+    <img src="screenshots/home-screen-1.png" alt="Home Screen" width="200"/>
+    <img src="screenshots/home-screen-2.png" alt="Home Screen" width="200"/>
 </p>
 
 ### Create Post Screens
