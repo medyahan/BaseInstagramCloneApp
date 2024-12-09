@@ -1,66 +1,96 @@
-# Base Instagram Clone App
+# BaseInstagramCloneApp
 
-This repository contains a simple Instagram clone application built using Swift and Firebase. The project demonstrates foundational iOS development concepts, including user authentication, database integration, and basic UI/UX design inspired by Instagram's core functionalities.
+**BaseInstagramCloneApp** is a sample Instagram-like iOS application built with **Swift**, **UIKit**, and **Firebase**. The app demonstrates essential features such as user authentication, profile management, photo posting, liking posts, and viewing a user's post collection in a grid format.
 
 ---
 
 ## Features
 
-### User Authentication
-- Users can register an account with an email and password.
-- Login functionality for existing users.
-- Secure authentication using Firebase Authentication.
+### 1. User Authentication
 
-### Profile Management
-- Users can update their profile information, including username and profile picture.
+- **Sign Up and Login**
+  - Users can create new accounts or log in with existing credentials.
+  - Utilizes **Firebase Authentication** for secure user management.
+- **Session Management**
+  - Persistent user sessions with the ability to log out.
+  - Error handling for authentication failures.
 
-### Post Creation
-- Users can upload photos.
-- Posts are displayed on the main feed in chronological order.
+### 2. User Profile
 
-### Feed
-- Basic feed implementation showcasing posts from all users.
+- **Profile Viewing and Editing**
+  - Users can view their profile details, including username, bio, and profile picture.
+  - Edit profile feature allows updating the username, bio, and profile image.
+- **Profile Image Handling**
+  - Circular profile image display.
+  - Default placeholder image for users without a profile picture.
+  - Image caching using **SDWebImage** for performance optimization.
 
-### Database
-- Real-time data management using Firebase Firestore.
-- Efficient storage and retrieval of user data and posts.
+### 3. Post Management
+
+- **Create Posts**
+  - Users can upload images with descriptions.
+  - Images are stored in **Firebase Storage**.
+  - Post data is saved in **Firestore**, including image URL, description, and metadata.
+- **View Posts**
+  - Displays posts in a grid layout on the user's profile page.
+  - Dynamic resizing of grid cells to adapt to different screen sizes.
+- **Like and Unlike Posts**
+  - Users can like or unlike posts.
+  - Double-tap gesture on post images to like with an animated heart effect.
+  - Real-time like count updates using Firestore listeners.
+  - Prevents users from liking a post multiple times.
+
+### 4. Dynamic User Interface
+
+- **Responsive Design**
+  - Adapts to various iPhone screen sizes, including small and large devices.
+- **Animations**
+  - Smooth animations for liking posts.
+  - Visual feedback for user interactions.
+
+### 5. Real-Time Updates
+
+- **Firestore Listeners**
+  - Real-time synchronization of posts, likes, and profile updates.
+  - Automatic UI updates when data changes in Firestore.
+
+---
+
+## Requirements
+
+- **iOS Version:** 14.0 or later
+- **Xcode Version:** 12.0 or later
+- **Dependencies:**
+  - [CocoaPods](https://cocoapods.org/) for managing external libraries
+  - **Firebase SDK**
+  - **SDWebImage**
 
 ---
 
-## Technologies Used
+## Screenshots
 
-- **Swift**: Core programming language for the app.
-- **UIKit**: Building and managing the app's user interface.
-- **Firebase Authentication**: User login and registration.
-- **Firebase Firestore**: Backend database for storing user data and posts.
-- **Firebase Storage**: Hosting and retrieving uploaded images.
-- **Cocoapods**: Managing dependencies and third-party libraries.
+### Login / Sign Up Screen
+<p align="center">
+    <img src="screenshots/login-sign-up-screen.png" alt="Home Screen 1" width="200"/>
+</p>
 
----
+### Home Screen
+<p align="center">
+    <img src="screenshots/home-screen.png" alt="Home Screen" width="200"/>
+</p>
 
-## Setup Instructions
+### Create Post Screens
+<p align="center">
+    <img src="screenshots/create-post-screen-1.png" alt="Create Post Screen 1" width="200"/>
+    <img src="screenshots/create-post-screen-2.png" alt="Create Post Screen 2" width="200"/>
+</p>
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/medyahan/BaseInstagramCloneApp.git
-   cd BaseInstagramCloneApp
-   ```
+### Profile Screen
+<p align="center">
+    <img src="screenshots/profile-screen.png" alt="Profile Screen" width="200"/>
+</p>
 
-2. **Install Dependencies:**
-   Ensure you have [Cocoapods](https://cocoapods.org/) installed and run:
-   ```bash
-   pod install
-   ```
-
-3. **Configure Firebase:**
-   - Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-   - Download the `GoogleService-Info.plist` file and add it to the project directory.
-   - Enable Firebase Authentication, Firestore, and Storage in the Firebase Console.
-
-4. **Open the Project in Xcode:**
-   Open the `.xcworkspace` file in Xcode.
-
-5. **Run the Application:**
-   Select a simulator or connected device and click the **Run** button in Xcode.
-
----
+### Profile Edit Screen
+<p align="center">
+    <img src="screenshots/profile-edit-screen.png" alt="Profile Edit Screen" width="200"/>
+</p>
